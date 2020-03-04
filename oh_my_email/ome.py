@@ -10,7 +10,16 @@ from email.mime.text import MIMEText
 from email.utils import formataddr
 from email.header import Header
 from dataclasses import dataclass
-from oh_my_email.exception import ConnectHostException, EmailAuthException
+from oh_my_email.exception import ConnectHostException, EmailAuthException, SendMailException
+
+
+@dataclass()
+class OhMyEmailContact:
+    email: str
+    name: str = ""
+
+    def render(self):
+        return formataddr([self.name, self.email])
 
 
 @dataclass()
@@ -19,13 +28,6 @@ class OhMyEmailConfig:
     mail_port: int
     mail_user: str
     mail_pass: str
-    mail_sender: str
-
-
-@dataclass()
-class OhMyEmailContact:
-    email: str
-    name: str = ""
 
 
 class OhMyEmailBaseContent:
@@ -38,13 +40,21 @@ class OhMyEmailBaseContent:
 
 class OhMyEmailPlainContent(OhMyEmailBaseContent):
 
-    def __init__(self, content, extra):
+    def __init__(self, content, extra=None):
         super().__init__(content, 'plain', extra)
 
 
 class OhMyEmailHtmlContent(OhMyEmailBaseContent):
-    def __init__(self, content, extra):
+    def __init__(self, content, extra=None):
         super().__init__(content, 'html', extra)
+
+
+def _serialize_contacts(contacts: List[OhMyEmailContact]) -> List[str]:
+    return [item.render() for item in contacts]
+
+
+def _serialize_contacts2str(contacts: List[OhMyEmailContact]) -> str:
+    return ','.join(_serialize_contacts(contacts=contacts))
 
 
 class OhMyEmail:
@@ -69,7 +79,7 @@ class OhMyEmail:
                 password=self.conf.mail_pass)
         except Exception as e:
             raise EmailAuthException(f"Auth Email SMTP Error, {str(e)}")
-        return self.smtp_client
+        return self
 
     def close_client(self):
         if self.smtp_client is None:
@@ -85,21 +95,39 @@ class OhMyEmail:
 
     def send(self, *,
              subject: str,
-             from_email: str,
-             to_email: List[OhMyEmailContact],
+             sender: OhMyEmailContact,
+             receiver: List[OhMyEmailContact],
              content: OhMyEmailBaseContent,
-             attachment):
+             cc: List[OhMyEmailContact] = None,
+             bcc: List[OhMyEmailContact] = None,
+             attachment=None) -> bool:
         """
         send email
         :param subject: email subject
-        :param from_email:
-        :param to_email:
+        :param sender:      邮件发送人列表
+        :param receiver:    邮件接收人列表
+        :param cc:          抄送人列表
+        :param bcc:         暗抄人列表
         :param content:
         :param attachment:
         :return:
         """
+        real_from_email = sender.render()
+        real_to_email = _serialize_contacts(receiver)
+
         message = MIMEText(content.content, content.content_type, 'utf-8')
-        message['Subject'] = Header(subject, 'utf-8')
-        message['From'] = Header(self.conf.mail_sender, 'utf-8')
-        to_email = [formataddr(item.name, item.email) for item in to_email]
-        self.smtp_client.sendmail(from_email, to_email, message.as_string())
+        message.add_header('Subject', subject)
+        message.add_header('From', real_from_email)
+        message.add_header('To', ",".join(real_to_email))
+
+        if cc:
+            message.add_header('CC', _serialize_contacts2str(cc))
+
+        if bcc:
+            message.add_header('BCC', _serialize_contacts2str(bcc))
+
+        try:
+            self.smtp_client.sendmail(real_from_email, real_to_email, message.as_string())
+        except Exception as e:
+            raise SendMailException(f'Send Email Error，{str(e)}')
+        return True
