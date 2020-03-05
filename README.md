@@ -14,3 +14,9 @@
 - [ ] 支持邮件模板
 
 ## 使用方式
+
+安装 `oh-my-email`
+
+```shell script
+pip install oh-my-email
+```

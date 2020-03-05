@@ -7,9 +7,8 @@ date: 2020-03-03
 from .ome import (
     OhMyEmail,
     OhMyEmailConfig,
-    OhMyEmailContact,
-    OhMyEmailHtmlContent,
-    OhMyEmailPlainContent
+    OhMyEmailContact
 )
+from .vo import OhMyEmailPlainContent, OhMyEmailHtmlContent
 
 __all__ = ['OhMyEmail', 'OhMyEmailConfig', 'OhMyEmailContact', 'OhMyEmailPlainContent', OhMyEmailHtmlContent]

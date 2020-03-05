@@ -6,55 +6,16 @@ date: 2020-03-04
 """
 import smtplib
 from typing import Union, List
+from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email.utils import formataddr
-from email.header import Header
-from dataclasses import dataclass
+from oh_my_email.vo import (
+    OhMyEmailContact,
+    OhMyEmailConfig,
+    OhMyEmailBaseContent,
+    BaseAttachment
+)
+from oh_my_email.utils import _serialize_contacts, _serialize_contacts2str
 from oh_my_email.exception import ConnectHostException, EmailAuthException, SendMailException
-
-
-@dataclass()
-class OhMyEmailContact:
-    email: str
-    name: str = ""
-
-    def render(self):
-        return formataddr([self.name, self.email])
-
-
-@dataclass()
-class OhMyEmailConfig:
-    mail_host: str
-    mail_port: int
-    mail_user: str
-    mail_pass: str
-
-
-class OhMyEmailBaseContent:
-
-    def __init__(self, content, content_type, extra):
-        self.content = content
-        self.content_type = content_type
-        self.extra = extra
-
-
-class OhMyEmailPlainContent(OhMyEmailBaseContent):
-
-    def __init__(self, content, extra=None):
-        super().__init__(content, 'plain', extra)
-
-
-class OhMyEmailHtmlContent(OhMyEmailBaseContent):
-    def __init__(self, content, extra=None):
-        super().__init__(content, 'html', extra)
-
-
-def _serialize_contacts(contacts: List[OhMyEmailContact]) -> List[str]:
-    return [item.render() for item in contacts]
-
-
-def _serialize_contacts2str(contacts: List[OhMyEmailContact]) -> str:
-    return ','.join(_serialize_contacts(contacts=contacts))
 
 
 class OhMyEmail:
@@ -100,7 +61,7 @@ class OhMyEmail:
              content: OhMyEmailBaseContent,
              cc: List[OhMyEmailContact] = None,
              bcc: List[OhMyEmailContact] = None,
-             attachment=None) -> bool:
+             attachment: List[BaseAttachment] = None) -> bool:
         """
         send email
         :param subject: email subject
@@ -115,16 +76,21 @@ class OhMyEmail:
         real_from_email = sender.render()
         real_to_email = _serialize_contacts(receiver)
 
-        message = MIMEText(content.content, content.content_type, 'utf-8')
+        message = MIMEMultipart()
         message.add_header('Subject', subject)
         message.add_header('From', real_from_email)
         message.add_header('To', ",".join(real_to_email))
+        message.attach(MIMEText(content.content, content.content_type, 'utf-8'))
 
         if cc:
             message.add_header('CC', _serialize_contacts2str(cc))
 
         if bcc:
             message.add_header('BCC', _serialize_contacts2str(bcc))
+
+        if attachment:
+            for item in attachment:
+                message.attach(item.patch())
 
         try:
             self.smtp_client.sendmail(real_from_email, real_to_email, message.as_string())
