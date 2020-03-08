@@ -16,3 +16,7 @@ class ConnectHostException(Exception):
 
 class EmailAuthException(Exception):
     pass
+
+
+class DownloadResourceException(Exception):
+    pass

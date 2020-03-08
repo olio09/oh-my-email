@@ -8,7 +8,9 @@ import requests
 from abc import abstractmethod
 from dataclasses import dataclass
 from email.utils import formataddr
+from email.mime.image import MIMEImage
 from email.mime.application import MIMEApplication
+from oh_my_email.utils import analyze_html_img, img2base64
 
 
 @dataclass()
@@ -35,16 +37,34 @@ class OhMyEmailBaseContent:
         self.content_type = content_type
         self.extra = extra
 
+    @abstractmethod
+    def dispatch_content(self, message):
+        """
+
+        :param message:
+        :return:
+        """
+
 
 class OhMyEmailPlainContent(OhMyEmailBaseContent):
 
     def __init__(self, content, extra=None):
         super().__init__(content, 'plain', extra)
 
+    def dispatch_content(self, message):
+        return self.content
+
 
 class OhMyEmailHtmlContent(OhMyEmailBaseContent):
     def __init__(self, content, extra=None):
         super().__init__(content, 'html', extra)
+
+    def dispatch_content(self, message):
+        result = analyze_html_img(self.content)
+        for item in result:
+            data = img2base64(item)
+            self.content = self.content.replace(item, f'data:image/jpg;base64,{data}')
+        return self.content
 
 
 class BaseAttachment:
@@ -62,7 +82,6 @@ class UrlAttachment(BaseAttachment):
 
     def patch(self):
         raw = requests.get(self.url).content
-        import ipdb
         part = MIMEApplication(raw)
         part.add_header('Content-Disposition', 'attachment', filename=self.filename)
         return part

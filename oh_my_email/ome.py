@@ -80,7 +80,7 @@ class OhMyEmail:
         message.add_header('Subject', subject)
         message.add_header('From', real_from_email)
         message.add_header('To', ",".join(real_to_email))
-        message.attach(MIMEText(content.content, content.content_type, 'utf-8'))
+        message.attach(MIMEText(content.dispatch_content(message), content.content_type, 'utf-8'))
 
         if cc:
             message.add_header('CC', _serialize_contacts2str(cc))
