@@ -28,7 +28,7 @@ setup(
     install_requires=[
         'requests~=2.22.0',
         'beautifulsoup4~=4.8.2',
-        'lxml~=4.5.0',
+        'lxml>=4.5,<4.7',
     ],
     scripts=[],
     include_package_data=True,
