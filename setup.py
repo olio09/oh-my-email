@@ -26,7 +26,7 @@ setup(
     license='MPL-2.0',
     packages=['oh_my_email'],
     install_requires=[
-        'requests~=2.22.0',
+        'requests>=2.22,<2.32',
         'beautifulsoup4~=4.8.2',
         'lxml>=4.5,<4.10',
     ],
